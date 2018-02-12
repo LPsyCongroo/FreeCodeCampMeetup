@@ -84,8 +84,8 @@ console.log("our imported value is " + importedOne);
 ```
 When we execute app.js the resulting console should read:
 ```
->var one says export me! but var two says leave me alone.
->our imported value is export me!
+var one says export me! but var two says leave me alone.
+our imported value is export me!
 ```
 Some things to notice:
 * Notice that the first item logged to the console is from the module file. When the `require` function is first called it parses and evaluates the code in the module and then returns `module.exports`.
@@ -109,6 +109,8 @@ For a deeper look at `require` under the hood as well as a comparison with the E
 https://hackernoon.com/node-js-tc-39-and-modules-a1118aecf95e
 and the follow up:
 https://medium.com/the-node-js-collection/an-update-on-es6-modules-in-node-js-42c958b890c
+
+Try diving right into the source code! Using Visual Studio Code's Node Debugger, set a breakpoint next to the require function. Then click the down arrow to step-in so you can see what happens internally for yourself!
 
 ### 4.4 Module Patterns
 Let's take a look at some common design patterns used with modules.
@@ -194,11 +196,11 @@ console.log('the result from the first require is', myMod);
 var myMod2 = require('./mod');
 console.log('the result from the second require is', myMod2);
 ```
+Console result:
 ```
-// Console result:
-> this is executed from the module - but only once!
-> the result from the first require is hello world
-> the result from the second require is hello world
+this is executed from the module - but only once!
+the result from the first require is hello world
+the result from the second require is hello world
 ```
 You might say: "Hey, didn't you say earlier that caching was useful?" It is! Caching modules allows us to preserve state for our modules and this can be a powerful tool. It also optimizes performance.
 
@@ -241,4 +243,67 @@ greet5();  //=>"Hello World"
 Thanks to closures, the `greet` function still has access to the `greeting` variable but the module that is importing it does not!
 
 ## Section 5: The Event Emitter
-Almooooooooooooooooost.... thhhhhhhhhhhhhhhhere.... [dies]
+### 5.1 Introduction
+Event: Something that happened that our app responds to.
+In NodeJS there are actually two kinds of events: 
+
+System Events come from the C++ core of NodeJS, located in the libuv folder. It deals with events related to the computer system (received files, data from the internet, etc).
+
+Custom events are completely different; they are part of the Javascript core and can be used to make custom events in Javascript using what is called the Event Emitter.
+
+These two event systems are often related, as much of Node's C++ functionality is wrapped in Javascript code. When a computer system related event occurs, there is often a Javascript event associated with it.
+
+The ECMAscript specification does not actually have a concept of events, so instead Node "fakes" it by building its own Event Emitter. It's not as difficult as it sounds—in fact, let's make one right now.
+### 5.2 Let's Make an Event Emitter
+We'll start by creating a function constructor for our Event Emitter. For now it will take an object as a property.
+```javacript
+// emitter.js
+function Emitter() {
+    this.events = {};
+}
+```
+Next, we'll add some methods to the prototype. The first is the `on` method. It will take two parameters: `type` which will be the type of event and `listener` which will be the event listener. (An event listener is a function that is called in response to an event. If you've worked on front-end Javascript, you are likely familiar with the `addEventListener` function. Our `on` method is not exactly the same, but it performs a similar task!) We then check to see if there is already an event of type `type`. If there isn't, we'll set it as a new array. Then we add the listener to the array.
+```javascript
+Emitter.prototype.on = function(type, listener) {
+    this.events[type] = this.events[type] || [];
+    this.events[type].push(listener);
+}
+```
+The second method is called `emit`. This will just take an event type as a parameter. Everytime this method is called, it will see if there exists an event of the kind `type`. If there is, it will loop through the array of all the listeners that were added and call each one. When our app needs to say that an event was called, it uses the `emit` method to call all the responses to that event.
+```javascript
+Emitter.prototype.emit = function(type) {
+    if(this.events[type]){
+        this.events[type].forEach(function(listener){
+            listener();
+        });
+    }
+}
+```
+Now let's apply our new event emitter.
+```javascript
+// app.js
+var Emitter = require('./emitter');
+var emtr = new Emitter();
+
+emtr.on('order66', function(){
+    console.log('Execute Order 66.');
+});
+emtr.on('epic event', function(){
+    console.log('PEW PEW PEW');
+});
+emtr.on('epic event', function(){
+    console.log('Wilhelm scream);
+});
+emtr.emit('order66');
+```
+The resulting console will read:
+```
+Execute Order 66
+PEW PEW PEW
+Wilhelm scream
+```
+Although the native NodeJS event emitter is a bit more complex, this is essentially how it works. I bet by now you're blown away by how simple it is. 
+
+![alt text](https://media1.tenor.com/images/d00d4c0c61062ff1fa2ce56263430c04/tenor.gif?itemid=8019692 "Ohmehgerd Palpatine soooo amazed!")
+
+### 5.3 The Node Event Emitter
